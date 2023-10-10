@@ -1,0 +1,9 @@
+{
+  "name": "ovidenov/k4p-group-taxonomy",
+  "description": "K4P group taxonomy",
+  "type": "drupal-module",
+  "require" : {
+    "drupal/core": "^10.1"
+  },
+  "license": "GPL-2.0-or-later"
+}
