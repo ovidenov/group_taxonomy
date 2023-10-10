@@ -1,0 +1,7 @@
+name: 'group_taxonomy_facet'
+type: module
+description: 'Group taxonomy facet sub-module'
+core_version_requirement: ^8 || ^9 || ^10
+php: 7.1
+dependencies:
+  - 'group_taxonomy:group_taxonomy'

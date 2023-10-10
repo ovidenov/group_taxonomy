@@ -1,0 +1,139 @@
+<?php
+
+/**
+ * @file
+ * Group taxonomy.
+ */
+
+use Drupal\Core\Access\AccessResult;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\Core\Session\AccountInterface;
+use Drupal\taxonomy\TermInterface;
+use Drupal\taxonomy\VocabularyInterface;
+use Drupal\Core\Field\BaseFieldDefinition;
+use Drupal\Core\Entity\EntityTypeInterface;
+use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+use Drupal\Core\Form\FormStateInterface;
+
+/**
+ * Alter vocabulary list builder.
+ *
+ * This alter is necessary to update taxonomy list and display only the
+ * vocabularies that user has permission to. It is based on group permissions.
+ *
+ * @param array $entity_types
+ *   Entity types.
+ */
+function group_taxonomy_entity_type_alter(array &$entity_types) {
+  $entity_types['taxonomy_vocabulary']->setHandlerClass('list_builder', 'Drupal\group_taxonomy\VocabularyListBuilder');
+}
+
+/**
+ * Custom entity access check for terms and vocabularies.
+ *
+ * @param \Drupal\Core\Entity\EntityInterface $entity
+ *   Entity.
+ *
+ * @return \Drupal\Core\Access\AccessResult
+ *   Neutral in case entity is not VocabularyInterface or TermInterface.
+ *   Allowed/Denied - Check user permission to edit the vocabulary.
+ */
+function group_taxonomy_entity_access(EntityInterface $entity, $op, AccountInterface $account) {
+  if ($entity instanceof VocabularyInterface) {
+    return \Drupal::service('group_taxonomy.taxonomy')->taxonomyVocabularyAccess($op, $entity, $account);
+  }
+  elseif ($entity instanceof TermInterface) {
+    return \Drupal::service('group_taxonomy.taxonomy')->taxonomyTermAccess($op, $entity, $account);
+  }
+
+  return AccessResult::neutral();
+}
+
+/**
+ * Check create access permissions for taxonomy terms.
+ *
+ * This hook is necessary for taxonomy_manager module to work properly
+ * when applying patch from issue #2991079
+ * https://www.drupal.org/project/taxonomy_manager/issues/2991079
+ *
+ * @param \Drupal\Core\Session\AccountInterface $account
+ *   The current logged in account.
+ * @param array $context
+ *   Contains entity_type_id and langcode.
+ * @param string $entity_bundle
+ *   The entity bundle/parent container.
+ *
+ * @return \Drupal\Core\Access\AccessResult
+ *   Neutral in case it is not taxonomy_term.
+ *   Allowed/Denied - Check user permission against parent vocabulary.
+ */
+function group_taxonomy_entity_create_access(AccountInterface $account, array $context, $entity_bundle) {
+  if ($context['entity_type_id'] !== 'taxonomy_term') {
+    return AccessResult::neutral();
+  }
+
+  // If user has permission to update the parent vocabulary the they have
+  // permission to create terms in this vocabulary.
+  $vocabulary = \Drupal::entityTypeManager()->getStorage('taxonomy_vocabulary')
+    ->load($entity_bundle);
+  return \Drupal::service('group_taxonomy.taxonomy')->taxonomyVocabularyAccess('update', $vocabulary, $account);
+}
+
+/**
+ * Implements hook_entity_base_field_info().
+ */
+function group_taxonomy_entity_base_field_info(EntityTypeInterface $entity_type) {
+  $fields = [];
+  if ($entity_type->id() == 'group_content') {
+    $fields['gt_allowed_content_types'] = BaseFieldDefinition::create('entity_reference')
+      ->setLabel(t('Group Taxonomy Allowed content types'))
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setDescription(t('Group Taxonomy Allowed content types'))
+      ->setSetting('target_type', 'node_type')
+      ->setDisplayOptions('form', [
+        'weight' => 10,
+        'type' => 'options_buttons',
+      ])
+      ->setDisplayConfigurable('form', TRUE);
+  }
+
+  if ($entity_type->id() == 'node') {
+    $fields['gt_term_reference'] = BaseFieldDefinition::create('entity_reference')
+      ->setName('gt_term_reference')
+      ->setLabel(t('Group Taxonomy term Reference'))
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setDescription(t('Group Taxonomy term Reference'))
+      ->setSetting('target_type', 'taxonomy_term')
+      ->setDisplayOptions('form', [
+        'weight' => 10,
+        'type' => 'group_taxonomy_field_widget',
+      ])
+      ->setDisplayConfigurable('form', TRUE);
+  }
+
+  return $fields;
+}
+
+/**
+ * Implements hook_entity_insert().
+ */
+function group_taxonomy_entity_insert(EntityInterface $entity) {
+  if ($entity->getEntityType()->id() == 'group_content') {
+    $route_name = \Drupal::routeMatch()->getRouteName();
+    if ($entity->getContentPlugin()->getPluginId() == 'group_taxonomy' && $route_name == 'entity.group_content.create_form') {
+      $response = new RedirectResponse($entity->toUrl('edit-form')->toString());
+      $response->send();
+    }
+  }
+}
+
+/**
+ * Implements hook_form_BASE_FORM_ID_alter().
+ *
+ */
+function group_taxonomy_form_group_content_form_alter(&$form, FormStateInterface $form_state) {
+  if ($form_state->getFormObject()->getEntity()->getContentPlugin()->getPluginId() != 'group_taxonomy') {
+    $form['gt_allowed_content_types']['#access'] = FALSE;
+  }
+}

@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * @file
+ * Contains group_taxonomy_facet.module.
+ */
+
+/**
+ * Implements hook_theme().
+ */
+function group_taxonomy_facet_theme() {
+  $theme['facets_item_list__group_taxonomy_facet'] = [
+    'base hook' => 'facets_item_list',
+  ];
+  return $theme;
+}
+
+/**
+ * Implements hook_theme_suggestions_HOOK().
+ */
+function group_taxonomy_facet_theme_suggestions_facets_item_list(array $variables) {
+  $suggestions = [];
+  $suggestions[] = 'facets_item_list__group_taxonomy_facet';
+  return $suggestions;
+}

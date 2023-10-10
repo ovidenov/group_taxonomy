@@ -1,0 +1,13 @@
+services:
+  group_taxonomy.route_subscriber:
+    class: Drupal\group_taxonomy\Routing\RouteSubscriber
+    tags:
+      - { name: event_subscriber }
+
+  group_taxonomy.autocomplete_matcher:
+    class: Drupal\group_taxonomy\GroupTermAutocompleteMatcher
+    arguments: [ '@plugin.manager.entity_reference_selection', '@group.membership_loader', '@group_taxonomy.taxonomy', '@current_user' ]
+
+  group_taxonomy.taxonomy:
+    class: Drupal\group_taxonomy\GroupTaxonomyService
+    arguments: ['@entity_type.manager', '@current_user', '@group.membership_loader']
