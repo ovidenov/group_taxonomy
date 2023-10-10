@@ -1,5 +1,5 @@
 {
-  "name": "ovidenov/k4p-group-taxonomy",
+  "name": "ovidenov/group_taxonomy",
   "description": "K4P group taxonomy",
   "type": "drupal-module",
   "require" : {
