@@ -7,7 +7,3 @@ dependencies:
   - group:group
   - drupal:taxonomy
 
-# Information added by Drupal.org packaging script on 2021-03-22
-version: '8.x-1.0-beta7'
-project: 'group_taxonomy'
-datestamp: 1616376170
